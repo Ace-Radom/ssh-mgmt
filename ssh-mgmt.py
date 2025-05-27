@@ -2,6 +2,7 @@ import argparse
 import ipaddress
 import json
 import os
+import shutil
 import subprocess
 import sys
 
@@ -89,6 +90,49 @@ def has_server(hostname: str) -> bool:
         return True
     return False
 
+def list_server() -> bool:
+    output_lines = []
+    output_lines.append([
+        "Hostname",
+        "IP Address",
+        "Username",
+        "Added at"
+    ])
+    for hostname, items in server_data.items():
+        output_lines.append([
+            hostname,
+            items["ip"],
+            items["username"],
+            datetime.fromtimestamp(items["add_time"]).strftime("%Y-%m-%d %H:%M:%S")
+        ])
+    col_widths = [max(len(str(item)) for item in col) for col in zip(*output_lines)]
+    for row in output_lines:
+        print(" | ".join(f"{item.ljust(col_widths[i])}" for i, item in enumerate(row)))
+    print()
+    return True
+
+def login_server(hostname: str) -> bool:
+    if not has_server(hostname):
+        print(f"Error: server `{hostname}` doesn't exist")
+        return False
+    
+    if shutil.which("ssh") is None:
+        print("Error: cannot find ssh executable")
+        return False
+
+    username = server_data[hostname]["username"]
+    ipaddr = server_data[hostname]["ip"]
+    
+    proc = subprocess.Popen(
+        ["ssh", f"{username}@{ipaddr}"],
+        stdin=sys.stdin,
+        stdout=sys.stdout,
+        stderr=sys.stderr
+    )
+    rcode = proc.wait()
+    print(f"ssh exits with code {rcode}")
+    return True
+
 def setup_args() -> None:
     features_arg_group = parser.add_mutually_exclusive_group()
     features_arg_group.add_argument("--add", nargs=3, metavar=("IP", "USERNAME", "HOSTNAME"), type=str, help="Add new remote server")
@@ -111,6 +155,11 @@ def main() -> None:
         username = args.add[1]
         hostname = args.add[2]        
         ret = add_server(ipaddr, username, hostname)
+    elif args.list:
+        ret = list_server()
+    elif args.login:
+        hostname = args.login
+        ret = login_server(hostname)
 
     save_server_data()
 
