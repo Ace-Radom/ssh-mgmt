@@ -129,8 +129,33 @@ def login_server(hostname: str) -> bool:
         stdout=sys.stdout,
         stderr=sys.stderr
     )
-    rcode = proc.wait()
-    print(f"ssh exits with code {rcode}")
+    rc = proc.wait()
+    print(f"ssh exits with code {rc}")
+    return True
+
+def ping_server(hostname: str) -> bool:
+    if not has_server(hostname):
+        print(f"Error: server `{hostname}` doesn't exist")
+        return False
+    
+    ipaddr = server_data[hostname]["ip"]
+
+    proc = subprocess.Popen(
+        ["ping", "-n", "4", ipaddr],
+        stdin=sys.stdin,
+        stdout=sys.stdout,
+        stderr=sys.stderr
+    )
+    rc = proc.wait()
+    print(f"ping exits with code {rc}")
+    return True
+
+def remove_server(hostname: str) -> bool:
+    if not has_server(hostname):
+        print(f"Error: server `{hostname}` doesn't exist")
+        return False
+    
+    server_data.pop(hostname, None)
     return True
 
 def setup_args() -> None:
@@ -160,6 +185,12 @@ def main() -> None:
     elif args.login:
         hostname = args.login
         ret = login_server(hostname)
+    elif args.ping:
+        hostname = args.ping
+        ret = ping_server(hostname)
+    elif args.remove:
+        hostname = args.remove
+        ret = remove_server(hostname)
 
     save_server_data()
 
